@@ -21,7 +21,11 @@ namespace Curso.Data
             optionsBuilder
               .UseLoggerFactory(_logger)
               .EnableSensitiveDataLogging()
-              .UseSqlServer("Data source=(localdb)\\mssqllocaldb;Initial Catalog=CursoEFCore;Integrated Security= true");
+              .UseSqlServer("Data source=(localdb)\\mssqllocaldb;Initial Catalog=CursoEFCore;Integrated Security= true",
+                  p => p.EnableRetryOnFailure(
+                    maxRetryCount: 2,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorNumbersToAdd: null).MigrationsHistoryTable("Curso_ef_core"));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -31,6 +35,25 @@ namespace Curso.Data
             //modelBuilder.ApplyConfiguration(new PedidoConfiguration());
             //modelBuilder.ApplyConfiguration(new ProdutoConfiguration());
             //modelBuilder.ApplyConfiguration(new PedidoItemConfiguration());
+        }
+
+        private void MapearPropriedadesEsquecidas(ModelBuilder modelBuilder)
+        {
+            foreach (var entity in modelBuilder.Model.GetEntityTypes())
+            {
+                var properties = entity.GetProperties().Where(p => p.ClrType == typeof(string));
+
+                foreach (var property in properties)
+                {
+                    if (string.IsNullOrEmpty(property.GetColumnType())
+                    && !property.GetMaxLength().HasValue)
+                    {
+                        //property.SetMaxLength(100);
+                        property.SetColumnType("VARCHAR(100)");
+                    }
+
+                }
+            }
         }
     }
 }
